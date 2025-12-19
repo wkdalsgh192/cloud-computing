@@ -1,3 +1,9 @@
+variable "domain_name" {
+  type        = string
+  description = "Domain name for the application"
+  default     = "minho-jang.com"
+}
+
 variable "region" {
   default = "us-west-2"
 }
@@ -27,19 +33,33 @@ variable "db_password" {
 }
 
 variable "db_instance_class" {
-  type        = string
-  default     = "db.t3.micro"
+  type    = string
+  default = "db.t3.micro"
 }
 
 variable "db_allocated_storage" {
-  type        = number
-  default     = 20
+  type    = number
+  default = 20
 }
 
 variable "az_count" {
-  type = number
+  type    = number
   default = 1
 }
+
+data "aws_availability_zones" "available" {
+  state = "available"
+}
+
+data "aws_ami" "amazon_linux" {
+  most_recent = true
+  owners      = ["amazon"]
+  filter {
+    name   = "name"
+    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
+  }
+}
+
 locals {
   # ----------------------------
   # Availability Zones (1~5)
@@ -99,7 +119,7 @@ locals {
   }
 
   public_cidrs       = values(local.subnets.public)
-  private_app_cidrs  = values(local.subnets.private_app)
+  private_app_cidrs  = values(local.subnets.private)
   private_data_cidrs = values(local.subnets.private_data)
 
   # index-keyed maps so rule_number can be deterministic
@@ -108,7 +128,7 @@ locals {
   data_cidrs_by_idx   = { for idx, cidr in local.private_data_cidrs : idx => cidr }
 
   # subnet-id maps for NACL associations
-  public_subnet_ids_by_idx = { for idx, id in local.public_subnet_ids : idx => id }
-  app_subnet_ids_by_idx    = { for idx, id in local.private_app_subnet_ids : idx => id }
-  data_subnet_ids_by_idx   = { for idx, id in local.private_data_subnet_ids : idx => id }
+  # public_subnet_ids_by_idx = { for idx, id in local.public_subnet_ids : idx => id }
+  # app_subnet_ids_by_idx    = { for idx, id in local.private_app_subnet_ids : idx => id }
+  # data_subnet_ids_by_idx   = { for idx, id in local.private_data_subnet_ids : idx => id }
 }

@@ -11,11 +11,11 @@ output "bastion_host_ips" {
 }
 
 output "private_ec2_ip" {
-    description = "Private IPs of private ec2 instances"
-    value = {
-        for k, v in aws_instance.demo_ec2 :
-        k => v.private_ip
-    }
+  description = "Private IPs of private ec2 instances"
+  value = {
+    for k, v in aws_instance.demo_ec2 :
+    k => v.private_ip
+  }
 }
 
 output "ec2_private_key_pem" {

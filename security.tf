@@ -29,21 +29,21 @@ resource "aws_network_acl" "private_data" {
 # NACL Association
 # ------------------------
 resource "aws_network_acl_association" "public" {
-  for_each       = local.public_subnet_ids_by_idx
+  for_each       = aws_subnet.public
   network_acl_id = aws_network_acl.public.id
-  subnet_id      = each.value
+  subnet_id      = each.value.id
 }
 
 resource "aws_network_acl_association" "private_app" {
-  for_each       = local.app_subnet_ids_by_idx
+  for_each       = aws_subnet.private
   network_acl_id = aws_network_acl.private_app.id
-  subnet_id      = each.value
+  subnet_id      = each.value.id
 }
 
 resource "aws_network_acl_association" "private_data" {
-  for_each       = local.data_subnet_ids_by_idx
+  for_each       = aws_subnet.private_data
   network_acl_id = aws_network_acl.private_data.id
-  subnet_id      = each.value
+  subnet_id      = each.value.id
 }
 
 # ------------------------
@@ -59,8 +59,8 @@ resource "aws_network_acl_rule" "public_out_to_app_port" {
   protocol       = "tcp"
   rule_action    = "allow"
   cidr_block     = each.value
-  from_port      = var.app_port
-  to_port        = var.app_port
+  from_port      = 443
+  to_port        = 443
 }
 
 # Outbound ephemeral Public -> Private App (return traffic)
@@ -85,8 +85,8 @@ resource "aws_network_acl_rule" "app_in_from_public_port" {
   protocol       = "tcp"
   rule_action    = "allow"
   cidr_block     = each.value
-  from_port      = var.app_port
-  to_port        = var.app_port
+  from_port      = 443
+  to_port        = 443
 }
 
 # Inbound ephemeral from Public -> Private App (return traffic)
@@ -158,65 +158,98 @@ resource "aws_network_acl_rule" "data_out_ephemeral_to_app" {
 # ------------------------
 # Security Group for RDS (Allow inbound ONLY from app SG)
 # ------------------------
-resource "aws_security_group" "public" {
-    name = "public_sg_https"
-    description = "Allow HTTPS"
-    vpc_id = aws_vpc.demo_vpc.id
+resource "aws_security_group" "public_alb" {
+  name        = "public_sg_https"
+  description = "Allow HTTPS"
+  vpc_id      = aws_vpc.demo_vpc.id
 
-    ingress {
-      description = "HTTP for redirect"
-      from_port = 80
-      to_port = 80
-      protocol = "tcp"
-      cidr_blocks = ["0.0.0.0/0"]
-    }
+  ingress {
+    description = "HTTP for redirect"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 
-    ingress {
-        description = "HTTPS"
-        from_port = 443
-        to_port = 443
-        protocol = "tcp"
-        cidr_blocks = ["0.0.0.0/0"]
-    }
+  ingress {
+    description = "HTTPS"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
 
-    egress {
-        from_port = 443
-        to_port = 443
-        protocol = "tcp"
-        security_groups = [aws_security_group.private.id]
-    }
+resource "aws_security_group" "public_ssh" {
+  name        = "public_sg_ssh"
+  description = "Allow SSH"
+  vpc_id      = aws_vpc.demo_vpc.id
+
+  ingress {
+    description = "SSH"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 }
 
 resource "aws_security_group" "private" {
-    name = "private_sg_https"
-    description = "Allow HTTPS for private app tier"
-    vpc_id = aws_vpc.demo_vpc.id
+  name        = "private_sg_https"
+  description = "Allow HTTPS for private app tier"
+  vpc_id      = aws_vpc.demo_vpc.id
 
-    ingress {
-        description = "HTTPS"
-        from_port = 443
-        to_port = 443
-        protocol = "tcp"
-        security_groups = [aws_security_group.public.id]
-    }
-
-    egress {
-        from_port = var.db_port
-        to_port = var.db_port
-        protocol = "tcp"
-        security_groups = [aws_security_group.private_data.id]
-    }
+  ingress {
+    description     = "SSH"
+    from_port       = 22
+    to_port         = 22
+    protocol        = "tcp"
+    security_groups = [aws_security_group.public_ssh.id]
+  }
 }
 
 resource "aws_security_group" "private_data" {
-  name = "private_data_sg_db"
+  name        = "private_data_sg"
   description = "Allow DB access from app tier only"
-  vpc_id = aws_vpc.demo_vpc.id
+  vpc_id      = aws_vpc.demo_vpc.id
+}
 
-  ingress {
-    from_port = var.db_port
-    to_port = var.db_port
-    protocol = "tcp"
-    security_groups = [aws_security_group.private.id]
-  }
+# ------------------------
+# Security Group Rules
+# ------------------------
+
+resource "aws_security_group_rule" "alb_to_app_egress" {
+  type                     = "egress"
+  security_group_id        = aws_security_group.public_alb.id
+  from_port                = 443
+  to_port                  = 443
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.private.id
+}
+
+resource "aws_security_group_rule" "app_ingress_from_alb" {
+  type                     = "ingress"
+  security_group_id        = aws_security_group.private.id
+  from_port                = 443
+  to_port                  = 443
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.public_alb.id
+}
+
+resource "aws_security_group_rule" "app_to_data_egress" {
+  type                     = "egress"
+  security_group_id        = aws_security_group.private.id
+  from_port                = var.db_port
+  to_port                  = var.db_port
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.private_data.id
+}
+
+resource "aws_security_group_rule" "data_from_app_ingress" {
+  type                     = "ingress"
+  security_group_id        = aws_security_group.private_data.id
+  from_port                = var.db_port
+  to_port                  = var.db_port
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.private.id
 }
