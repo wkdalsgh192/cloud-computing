@@ -1,5 +1,5 @@
 resource "aws_subnet" "public" {
-  for_each = local.subnets.public
+  for_each = local.public_subnets
 
   vpc_id                  = aws_vpc.demo_vpc.id
   cidr_block              = each.value
@@ -13,7 +13,7 @@ resource "aws_subnet" "public" {
 }
 
 resource "aws_subnet" "private" {
-  for_each = local.subnets.private
+  for_each = local.app_subnets
 
   vpc_id                  = aws_vpc.demo_vpc.id
   cidr_block              = each.value
@@ -27,7 +27,7 @@ resource "aws_subnet" "private" {
 }
 
 resource "aws_subnet" "private_data" {
-  for_each = local.subnets.private_data
+  for_each = local.data_subnets
 
   vpc_id                  = aws_vpc.demo_vpc.id
   cidr_block              = each.value
@@ -37,18 +37,5 @@ resource "aws_subnet" "private_data" {
   tags = {
     Name = "private-data-${each.key}"
     Tier = "private-data"
-  }
-}
-
-# ------------------------
-# DB Subnet Group
-# ------------------------
-resource "aws_db_subnet_group" "demo_db_subnets" {
-  name        = "demo-db-subnet-group"
-  description = "RDS subnet group for private subnets"
-  subnet_ids  = values(aws_subnet.private_data)[*].id
-
-  tags = {
-    Name = "demo-db-subnet-group"
   }
 }
