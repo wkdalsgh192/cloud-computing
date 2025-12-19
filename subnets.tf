@@ -27,7 +27,7 @@ resource "aws_subnet" "private" {
 }
 
 resource "aws_subnet" "private_data" {
-    for_each = local.subnets.private
+    for_each = local.subnets.private_data
 
     vpc_id = aws_vpc.demo_vpc.id
     cidr_block = each.value
