@@ -1,5 +1,5 @@
 # ------------------------
-# Security Group for RDS (Allow inbound ONLY from app SG)
+# Security Groups
 # ------------------------
 resource "aws_security_group" "public_alb" {
   name        = "public_sg_https"
@@ -21,6 +21,13 @@ resource "aws_security_group" "public_alb" {
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 }
 
 resource "aws_security_group" "public_ssh" {
@@ -33,6 +40,13 @@ resource "aws_security_group" "public_ssh" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"] # SSH access must be restricted to approved admin IP addresses
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
@@ -49,6 +63,13 @@ resource "aws_security_group" "private" {
     protocol        = "tcp"
     security_groups = [aws_security_group.public_ssh.id]
   }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 }
 
 resource "aws_security_group" "private_data" {
@@ -61,15 +82,6 @@ resource "aws_security_group" "private_data" {
 # Security Group Rules
 # ------------------------
 
-resource "aws_security_group_rule" "alb_to_app_egress" {
-  type                     = "egress"
-  security_group_id        = aws_security_group.public_alb.id
-  from_port                = 443
-  to_port                  = 443
-  protocol                 = "tcp"
-  source_security_group_id = aws_security_group.private.id
-}
-
 resource "aws_security_group_rule" "app_ingress_from_alb" {
   type                     = "ingress"
   security_group_id        = aws_security_group.private.id
@@ -77,15 +89,6 @@ resource "aws_security_group_rule" "app_ingress_from_alb" {
   to_port                  = 443
   protocol                 = "tcp"
   source_security_group_id = aws_security_group.public_alb.id
-}
-
-resource "aws_security_group_rule" "app_to_data_egress" {
-  type                     = "egress"
-  security_group_id        = aws_security_group.private.id
-  from_port                = var.db_port
-  to_port                  = var.db_port
-  protocol                 = "tcp"
-  source_security_group_id = aws_security_group.private_data.id
 }
 
 resource "aws_security_group_rule" "data_from_app_ingress" {
