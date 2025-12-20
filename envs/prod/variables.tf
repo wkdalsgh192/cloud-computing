@@ -1,3 +1,8 @@
+variable "environment" {
+  type = string
+  default = "prod"
+}
+
 variable "db_port" {
   type        = number
   description = "Postgres port"

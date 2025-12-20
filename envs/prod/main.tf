@@ -1,6 +1,7 @@
 module "network" {
   source = "../../modules/network"
 
+  environment = var.environment
   vpc_cidr            = var.vpc_cidr
   azs                 = local.azs
   public_subnet_cidrs = local.public_subnet_cidrs
@@ -28,6 +29,8 @@ module "compute" {
   app_sg_id             = module.security.private_app_sg_id
   public_subnets_by_az  = module.network.public_subnets_by_az
   private_subnets_by_az = module.network.private_subnets_by_az
+  environment = var.environment
+
 }
 
 module "database" {
