@@ -1,6 +1,19 @@
 variable "environment" {
   type = string
-  default = "prod"
+}
+
+variable "region" {
+  description = "AWS region"
+  type        = string
+}
+
+variable "domain_name" {
+  type = string
+}
+
+variable "db_instance_class" {
+  type    = string
+  default = "db.t3.micro"
 }
 
 variable "db_port" {
@@ -13,11 +26,6 @@ variable "db_password" {
   type        = string
   description = "Master password for RDS"
   sensitive   = true
-}
-
-variable "region" {
-  description = "AWS region"
-  type        = string
 }
 
 variable "az_count" {

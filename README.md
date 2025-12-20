@@ -6,43 +6,68 @@ This assignment demonstrates a production-grade, highly available, and secure AW
 
 
 ## Architecture Overview
-![Architecture Diagram](images/vpc_diagram.png)
-
 ```mermaid
 flowchart TB
-    User[User]
-    Internet[Internet]
+ subgraph PublicSubnets["Public Subnets - Multi AZ"]
+        ALB["Application Load Balancer"]
+        Bastion["Bastion Host"]
+        NAT["NAT Gateway"]
+  end
+ subgraph AppSubnets["Private App Subnets"]
+        App["Application Servers"]
+        VPCEndpoints["Interface VPC Endpoints"]
+  end
+ subgraph DataSubnets["Private Data Subnets"]
+        DB[("Database")]
+  end
+ subgraph VPC["VPC 10.0.0.0/16"]
+        PublicSubnets
+        AppSubnets
+        DataSubnets
+        S3Endpoint["S3 Gateway Endpoint"]
+  end
+ subgraph AWS["AWS Cloud"]
+        VPC
+        CloudWatch["CloudWatch"]
+        S3["S3"]
+  end
+    User["User"] --> Internet["Internet"]
+    Admin --> Bastion
+    Internet --> ALB
+    ALB --> App
+    App --> DB & NAT & VPCEndpoints & S3Endpoint
+    VPCEndpoints --> CloudWatch
+    Bastion --> App
+    NAT --> Internet
+    S3Endpoint --> S3
+    VPC -. VPC Flow Logs .-> CloudWatch
+    ALB -. Access Logs .-> S3
+    DB -. Logs .-> CloudWatch
+```
 
-    subgraph AWS[AWS Cloud]
-        subgraph VPC[VPC 10.0.0.0/16]
-
-            subgraph PublicSubnets[Public Subnets - Multi AZ]
-                ALB[Application Load Balancer]
-                Bastion[Bastion Host]
-                NAT[NAT Gateway]
-            end
-
-            subgraph AppSubnets[Private App Subnets]
-                App[Application Servers]
-            end
-
-            subgraph DataSubnets[Private Data Subnets]
-                DB[(Database)]
-            end
-        end
+## Multi-AZ Subnet Design
+```mermaid
+flowchart TB
+    subgraph AZA[AZ-a]
+        PubA[Public Subnet A]
+        AppA[Private App Subnet A]
+        DataA[Private Data Subnet A]
     end
 
-    User --> Internet --> ALB
-    ALB --> App
-    App --> DB
+    subgraph AZB[AZ-b]
+        PubB[Public Subnet B]
+        AppB[Private App Subnet B]
+        DataB[Private Data Subnet B]
+    end
 
-    Admin --> Bastion
-    Bastion --> App
-    App --> NAT --> Internet
+    ALB[ALB] --- PubA
+    ALB --- PubB
+
+    PubA --> AppA --> DataA
+    PubB --> AppB --> DataB
 ```
 
 ## Network Traffic Flow
-![Architecture Diagram](images/network_flow.png)
 ```mermaid
 flowchart LR
     Internet -->|80/443| ALB

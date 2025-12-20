@@ -4,6 +4,6 @@ resource "aws_cloudwatch_log_group" "ec2" {
 }
 
 resource "aws_iam_role_policy_attachment" "cw_agent" {
-  role       = aws_iam_role.ec2_role.name
+  role       = var.ec2_role_name
   policy_arn = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
 }

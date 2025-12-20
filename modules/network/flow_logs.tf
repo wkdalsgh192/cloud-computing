@@ -24,8 +24,8 @@ resource "aws_iam_role_policy" "flow_logs" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Effect   = "Allow"
-      Action   = [
+      Effect = "Allow"
+      Action = [
         "logs:CreateLogStream",
         "logs:PutLogEvents"
       ]
@@ -35,8 +35,8 @@ resource "aws_iam_role_policy" "flow_logs" {
 }
 
 resource "aws_flow_log" "vpc" {
-  vpc_id          = aws_vpc.this.id
+  vpc_id          = aws_vpc.demo_vpc.id
   traffic_type    = "ALL"
   log_destination = aws_cloudwatch_log_group.vpc_flow_logs.arn
-  iam_role_arn   = aws_iam_role.flow_logs.arn
+  iam_role_arn    = aws_iam_role.flow_logs.arn
 }

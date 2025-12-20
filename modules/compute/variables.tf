@@ -22,6 +22,10 @@ variable "private_subnets_by_az" {
   type = map(string)
 }
 
+variable "ec2_role_name" {
+  type = string
+}
+
 data "aws_ami" "amazon_linux" {
   most_recent = true
   owners      = ["amazon"]
